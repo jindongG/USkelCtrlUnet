@@ -1,132 +1,98 @@
-# Snake-SWin-OCTA
-
-中文版README: [README_zh](./README_zh.md)
-
-## 1.Quick Start
-
-Here's a deep network built for efficient segmentation of OCTA retinal vessels using **dynamic snake convolution** and **swin-transformer**, constructed with **PyTorch**.
+# USkelCtrlNet: Skeleton-Free Structural Credibility Modeling for Topologically Accurate OCTA Segmentation
 
 
-**Related works**
+### Overview
+USkelCtrlNet is a deep learning framework for **topologically accurate OCTA vessel segmentation**.  
+It is designed to improve not only pixel-level overlap, but also vascular structural consistency under challenging OCTA degradations such as low contrast, speckle noise, projection artifacts, motion corruption, and signal attenuation.
 
-dynamic snake convolution：https://arxiv.org/abs/2307.08388
+Unlike conventional methods that mainly impose structural constraints on the final output, USkelCtrlNet introduces a **reliability-gated in-network structural control mechanism**. It estimates structural credibility during feature learning and uses it to guide feature calibration, cross-scale fusion, and decoder refinement, leading to better capillary continuity, fewer false bridges, and more stable artery-vein separation.
 
-swin-transformer: https://arxiv.org/abs/2103.14030
+---
 
-Use **train.py** for model training. The warning informations will tell you which packages you should install. These packages are commonly used Python libraries without additional configuration.
+### Highlights
+- Reliability-gated **in-network structural control** for OCTA segmentation
+- **Skeleton-free dual-map design**:
+  - structural credibility map
+  - reliability suppression map
+- Improves both **overlap-based metrics** and **topology-sensitive metrics**
+- Supports multiple OCTA segmentation targets:
+  - RV
+  - Capillary
+  - Artery
+  - Vein
+  - FAZ
 
-    python train.py
+---
 
-The dataset should be formed as **OCTA-500**, like this:
+### Framework
+<p align="center">
+  <img src="./fig1_framework.png.png" width="100%" alt="USkelCtrlNet framework">
+</p>
 
-    /datasets
-        /OCTA-500
-            /3M
-                /GT_Artery
-                    10301.bmp
-                    10302.bmp
-                    ...
-                /GT_Capillary
-                    10301.bmp
-                    10302.bmp
-                    ...
-                /GT_FAZ
-                ...
-                /ProjectionMaps
-                    /OCTA(FULL)
-                        10301.bmp
-                        10302.bmp
-                        ...
-                    /OCTA(ILM_OPL)
-                        10301.bmp
-                        10302.bmp
-                        ...
-                    /OCTA(OPL_BM)
-                        10301.bmp
-                        10302.bmp
-                        ...
-            /OCTA_6M
-                ...
+The proposed framework contains four main components:
 
-For reference, I have given several samples in each folder to check whether your dataset is placed correctly. If you want the complete dataset, you have to contact the author of the **OCTA_500** dataset.
+1. **Multi-DSConv Block**  
+   Geometry-consistent local vessel representation using multi-view direction-aware dynamic deformable convolution.
 
-**Note: The complete dataset is essential as the data samples are divided into training, validation, and testing sets based on the IDs. Failure to detect sample IDs will result in errors.**
+2. **Deformable Swin-Transformer Block**  
+   A warp-then-attend design that combines local continuity modeling and long-range dependency learning.
 
-**OCTA-500**'s related paper: : https://arxiv.org/abs/2012.07261
+3. **Space Structure Calibration (SSC) Block**  
+   Skeleton-free structural credibility estimation with reliability suppression for same-scale feature recalibration.
 
-The results and metrics will recorded in the **results** folder (If it doesn't exist, it will be created).
+4. **Structure-Conditioned Cross-Scale Selective Fusion (SC-CSSF) Block**  
+   Reliability-aware multi-scale feature routing for preserving vascular topology.
 
-If you need to visualize the prediction samples of results, please use the **display.py** file. Since the result folders are generated based on time, you may need to replace this line of code. The generated images are in the **sample_display** folder.
+---
 
-    ...
-        result_dir = "results/2024-04-25-10-42-47/SwinSnake_V2_3_9_1_72_MaxPooling_1_False_3M_LargeVessel_100_#/0100" # Your result dir
-    ...
+### Dataset
+Experiments are conducted on the **OCTA-500** benchmark with two field-of-view settings:
 
-We believe that the code provided in this repository is sufficient for successfully training the model and obtaining the expected results. However, as the related paper is currently under review, the settings, weights, and parameters cannot be disclosed at the moment. More detailed content and test code will be added after the paper is officially published.
+- **OCTA_3M**: 200 images, resolution `304 × 304`
+- **OCTA_6M**: 300 images, resolution `400 × 400`
 
-## 2. Segmentation Samples and Important Notes
+Each setting contains five independent binary segmentation tasks:
 
-Here are segmentation examples randomly selected from the test and validation sets for different tasks. From left to right, they represent the input image, annotations (in green), and predicted results (in yellow).
+- RV
+- Capillary
+- Artery
+- Vein
+- FAZ
 
-**3M FoV**
+Input projections include:
 
-*RV (retinal vessel)*
+- `FULL`
+- `ILM_OPL`
+- `OPL_BM`
 
-![Sample](./figures/RV_3M.gif)
+---
 
-*FAZ*
+### Main Results
 
-![Sample](./figures/FAZ_3M.gif)
+#### Vessel-related tasks
+USkelCtrlNet achieves strong and balanced performance on **RV, Capillary, Artery, and Vein** segmentation under both 3M and 6M settings, with clear improvements in **Dice**, **clDice**, **BACC**, and **G-mean**.
 
-*Capillary*
+<p align="center">
+  <img src="./clDice_radar_OCTA_3M_6M_full_combined.png" width="100%" alt="clDice radar plot">
+</p>
 
-![Sample](./figures/Capillary_3M.gif)
+#### FAZ segmentation
+USkelCtrlNet also shows competitive and stable results on **FAZ segmentation**, indicating that structural modulation improves topology-sensitive vessel tasks without sacrificing region-dominant targets.
 
-*Artery*
+<p align="center">
+  <img src="./FAZ_3M_6M_dual_boxplot_Dice_latest6M_v4_tuned.png" width="100%" alt="FAZ boxplot">
+</p>
 
-![Sample](./figures/Artery_3M.gif)
+---
 
-*Vein*
-
-![Sample](./figures/Vein_3M.gif)
-
-****
-
-**6M FoV**
-
-*RV*
-
-![Sample](./figures/RV_6M.gif)
-
-*FAZ*
-
-![Sample](./figures/FAZ_6M.gif)
-
-*Capillary*
-
-![Sample](./figures/Capillary_6M.gif)
-
-*Artery*
-
-![Sample](./figures/Artery_6M.gif)
-
-*Vein*
-
-![Sample](./figures/Vein_6M.gif)
-
-****
-
-Through experiments, it has been observed that for both **RV** and **capillary**, using lightweight models results in minimal degradation in segmentation performance. Training with this codebase requires a minimum of **3GB** of GPU memory. **Note** that the model can be freely configured by adjusting parameters such as **kernel size**, **network depth**, and **layer channels**, which will impact GPU memory consumption, training time, and segmentation effectiveness. The following table provides a simple reference for recommended configurations and segmentation performance：
-
-| memory budget| RV & capillary | FAZ, artery & vein |
-| ---   | ---  | --- |
-| 3GB   | good | poor |
-| 12GB  | good | moderate |
-| 24GB  | good | good |
-
-
-* "good, moderate and poor" in segmentation performance.
-
-## 3. Others
-
-If you wish to delve into more detailed reports, we recommend reading the related paper. If you find it helpful, please cite it accordingly : https://arxiv.org/abs/2404.18096
+### Code Structure
+```bash
+.
+├── train.py
+├── options.py
+├── USkelCtrlUnet.py
+├── conversion_and_visualize.py
+├── loss_functions.py
+├── dataset.py
+├── metrics.py
+└── README.md
